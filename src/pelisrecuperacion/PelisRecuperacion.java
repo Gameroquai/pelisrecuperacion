@@ -16,9 +16,13 @@ import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
+import java.util.Scanner;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.swing.BorderFactory;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
@@ -62,18 +66,22 @@ public class PelisRecuperacion  extends JFrame{
                 cerrar();
             }
         });
-        //PANEL CENTRO----------------------------------------------------------
-        JPanel centro = new JPanel();
-        centro.setSize(new Dimension(500, 450));
-        centro.setBorder(BorderFactory.createLineBorder(Color.yellow));
+        //PANEL NORTE-----------------------------------------------------------
+        JPanel norte = new JPanel();
         JLabel labelColumnas = new JLabel("Columnas");
         JLabel labelDatoB = new JLabel("Dato a buscar: ");
         JComboBox comboColum = new JComboBox();
+        cargaCombo(comboColum, "peliculas");
         JTextField fieldBuscar = new JTextField(15);
-        
-        
+        norte.add(labelColumnas);
+        norte.add(comboColum);
+        norte.add(labelDatoB);
+        norte.add(fieldBuscar);
+        //PANEL CENTRO----------------------------------------------------------
+        JPanel centro = new JPanel(new BorderLayout());
+        centro.setSize(new Dimension(500, 450));
+        centro.setBorder(BorderFactory.createLineBorder(Color.yellow));
         DefaultTableModel modeloTabla = tableModel("peliculas");
-        
         
         JTable tablaPelis = new JTable(modeloTabla){
             @Override
@@ -91,25 +99,28 @@ public class PelisRecuperacion  extends JFrame{
         };
         tablaPelis.setSize(450, 300);
         JScrollPane scrollPelis = new JScrollPane(tablaPelis);
+        scrollPelis.setPreferredSize(new Dimension(600, 270));
+        
+
         //PANEL CENTRO SUR------------------------------------------------------
-        JPanel centroSur = new JPanel();
+        JPanel centroSur = new JPanel(new BorderLayout());
+        centroSur.setPreferredSize(new Dimension(600, 130));
         centroSur.setBorder(BorderFactory.createLineBorder(Color.red));
         JTable tablaActores = new JTable();
         JScrollPane scrollActores = new JScrollPane(tablaActores);
+        scrollActores.setPreferredSize(new Dimension(400, 90));
+        cargarActores(tablaActores);
         JButton botonGuardar = new JButton("Guardar Datos");
-        JTextField fieldGuardar = new JTextField(15);
-        
-        centro.add(labelColumnas);
-        centro.add(comboColum);
-        centro.add(labelDatoB);
-        centro.add(fieldBuscar);
-        centro.add(scrollPelis);
-        centroSur.add(scrollActores);
-        centroSur.add(botonGuardar);
-        centroSur.add(fieldGuardar);
-        centro.add(centroSur);
+        JTextField fieldGuardar = new JTextField(10);
         
         
+        centro.add(scrollPelis, BorderLayout.CENTER);
+        centroSur.add(scrollActores, BorderLayout.WEST);
+        JPanel centroSurDer = new JPanel();
+        centroSurDer.add(botonGuardar, BorderLayout.EAST);
+        centroSurDer.add(fieldGuardar, BorderLayout.WEST);
+        centroSur.add(centroSurDer);
+        centro.add(centroSur, BorderLayout.SOUTH);
         
         //PANEL ESTE------------------------------------------------------------
         JPanel este = new JPanel(new BorderLayout());
@@ -141,10 +152,6 @@ public class PelisRecuperacion  extends JFrame{
         este.add(sliderEste, BorderLayout.EAST);
         este.add(botonCerrar, BorderLayout.SOUTH);
         String uri = null;
-        
-        
-        
-        
         //PANEL SUR-------------------------------------------------------------
         JPanel sur = new JPanel();
         JScrollPane scrollSur = new JScrollPane(sur);
@@ -163,9 +170,7 @@ public class PelisRecuperacion  extends JFrame{
             labelImagen = new JLabel(imagen);
             sur.add(labelImagen);
         }
-        
-        
-        
+        add(norte, BorderLayout.NORTH);
         add(centro, BorderLayout.CENTER);
         add(scrollSur, BorderLayout.SOUTH);
         add(este, BorderLayout.EAST);
@@ -180,37 +185,85 @@ public class PelisRecuperacion  extends JFrame{
                 }
     }
     
+    public void cargaCombo(JComboBox<Object> comboColum, String tabla) {
+
+        try {
+            ResultSet ejecutarConsulta = bD.ejecutarConsulta("select * from " + tabla);
+
+            ResultSetMetaData metaData = ejecutarConsulta.getMetaData();
+            int columnCount = metaData.getColumnCount();
+
+            for (int i = 1; i < columnCount; i++) {
+
+                comboColum.addItem(metaData.getColumnLabel(i));
+
+            }
+
+        } catch (SQLException ex) {
+            Logger.getLogger(ConectaBD.class.getName()).log(Level.SEVERE, null, ex);
+        }
+
+    }
+    
     public DefaultTableModel tableModel(String tabla) {
-        DefaultTableModel defaultTableModel = new DefaultTableModel();
+        DefaultTableModel dtm = new DefaultTableModel();
 
         ResultSet ejecutarConsulta = bD.ejecutarConsulta("Select * from " + tabla);
         try {
             ResultSetMetaData metadata = ejecutarConsulta.getMetaData();
             int columns = metadata.getColumnCount(); // Get number of columns
 
-            // Array to hold names
-// Get the column names
             for (int i = 0; i < columns; i++) {
-                defaultTableModel.addColumn(metadata.getColumnLabel(i + 1));
+                dtm.addColumn(metadata.getColumnLabel(i + 1));
             }
-// Get all rows
-            String[] rowData; // Stores one row
+            // Get all rows
+            Object[] rowData; // Stores one row
             while (ejecutarConsulta.next()) { // For each row...
-                rowData = new String[columns]; // create array to hold the data
+                rowData = new Object[columns]; // create array to hold the data
                 for (int i = 0; i < columns; i++) { // For each column
+                    String string = ejecutarConsulta.getString(i + 1);
                     rowData[i] = ejecutarConsulta.getString(i + 1); // retrieve the data item
                 }
-
-                defaultTableModel.addRow(rowData);
+                for (int i = 4; i < 6; i++) {
+                    if (((String) rowData[i]).equalsIgnoreCase("0")) {
+                        rowData[i] = false;
+                    } else {
+                        rowData[i] = true;
+                    }
+                    //convertir celdas a checkbox
+                    
+                    
+                }
+                dtm.addRow(rowData);
             }
-
         } catch (SQLException sqle) {
             System.err.println(sqle);
         }
-        return defaultTableModel;
+        return dtm;
     }
     
+    static void cargarActores(JTable tabla) {
+        DefaultTableModel dtm = new DefaultTableModel();
+        dtm.addColumn("Lista de actores");//hay que añadir la columna antes si no al final machaca con una columna vacia
+        try {
+            File file = new File("src/datos/actores.txt");
+            Scanner s = new Scanner(file);
             
-    
+            while (s.hasNextLine()) {
+                String linea = s.nextLine();
+                String[] split = linea.split(",");
+                String[] actores = split[0].split("-");
+//                String actores = useDelimiter.nextLine();
+//                String numero = useDelimiter.nextLine();
+//                String[] actoresSeparados = actores.split("-");
+        dtm.addRow(actores);
+            }
+             tabla.setModel(dtm);
+             
+            
+        } catch (FileNotFoundException ex) {
+            Logger.getLogger(PelisRecuperacion.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
     
 }
